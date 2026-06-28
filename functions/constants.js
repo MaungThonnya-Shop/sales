@@ -17,7 +17,7 @@ export const OWNER_ADMIN_IDS = [7576434717, 7240495054]; // <--- REPLACE WITH YO
 // KBank Payment Details (Thailand)
 export const KBANK_ACCOUNT_NAME = "𝗠𝗿 𝗠𝘆𝗮𝘁 𝗧𝗵𝘂"; // Replace with your KBank account name (e.g., "John Doe")
 export const KBANK_ACCOUNT_NUMBER = "158-3-91470-2"; // Replace with your KBank account number (e.g., "123-4-56789-0")
-export const KBANK_QR_CODE_FILE_ID = "AgACAgUAAxkBAAIJQGiyv4S7AqFz6K_DHQE5yI2OVkZcAAK2zjEbjCVIVUN16HnRB8SyAQADAgADeAADNgQ"; // <--- QR Code file_id ကို ဒီနေရာမှာ ထည့်ပါ။
+export const KBANK_QR_CODE_FILE_ID = "AgACAgUAAxkBAAO3akDioGpZD4HaWsZrKlnxe6yU07sAAjkPaxsI0PhVMlphWnouIEEBAAMCAAN5AAM8BA"; // <--- QR Code file_id ကို ဒီနေရာမှာ ထည့်ပါ။
 export const KBANK_QR_CODE_URL = ""; // file_id သုံးမှာမို့ URL မလိုပါဘူး။ Empty ထားပါ။
 
 
