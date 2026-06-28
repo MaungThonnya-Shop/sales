@@ -13,7 +13,7 @@ export const SUPPORT_GROUP_LINK = "https://t.me/zero_freevpn";
 // Bot Owner/Admin User IDs for THIS Public User Bot - Pre-filled with user's provided ID
 export const OWNER_ADMIN_IDS = [7576434717, 7240495054];
 
-// 🚨 NEW: Control Bot URL for Key Validation 🚨
+// 🚨 
 // Replace with your actual Control Bot URL
 export const CONTROL_BOT_URL = `https://master-control.pages.dev/`;
 
