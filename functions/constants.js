@@ -138,5 +138,5 @@ export const DEFAULT_WELCOME_MESSAGE = `
 <b>✅ ငွေလွှဲဝန်ဆောင်မှု</b> - ထိုင်းမှ မြန်မာသို့ လုံခြုံပြီးမြန်ဆန်သော ငွေလွှဲဝန်ဆောင်မှုများ။
 `;
 
-export const DEFAULT_WELCOME_PHOTO_FILE_ID = "AgACAgUAAxkBAAOFaI6eLO_qfv3h1kByVuYdIDYEpjwAAuXLMRu_1VhUcPOyaFZwVbUBAAMCAAN4AAM2BA";
+export const DEFAULT_WELCOME_PHOTO_FILE_ID = "AgACAgUAAxkBAAIBgmpBYiu14fBA-f2j6Cq5-8220pinAAIYFWsbf2YIVhqbW2QvjtIjAQADAgADeAADPAQ";
 export const NO_IMAGE_PLACEHOLDER_FILE_ID = "AgACAgUAAxkBAAOFaI6eLO_qfv3h1kByVuYdIDYEpjwAAuXLMRu_1VhUcPOyaFZwVbUBAAMCAAN4AAM2BA";
