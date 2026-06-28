@@ -6,8 +6,9 @@ import {
     ADMIN_USERNAME,
     SUPPORT_GROUP_LINK,
     OWNER_ADMIN_IDS,
-    DEFAULT_WELCOME_MESSAGE, // Make sure this is imported for default messages
-    MAIN_MENU_BUTTONS // Make sure this is imported for default messages
+    DEFAULT_WELCOME_MESSAGE,
+    MAIN_MENU_BUTTONS,
+    CONTROL_BOT_URL // NEW: Import CONTROL_BOT_URL
 } from './constants.js';
 
 // telegramHelpers.js မှ functions များကို import လုပ်ပါ။
@@ -15,36 +16,36 @@ import {
     sendMessage,
     getMe,
     answerCallbackQuery,
-    deleteUserData, // Import deleteUserData
-    kickChatMember, // Ensure this is imported if used in adminHandlers
-    restrictChatMember, // Ensure this is imported if used in adminHandlers
-    unbanChatMember, // Ensure this is imported if used in adminHandlers
-    unrestrictChatMember, // Ensure this is imported if used in adminHandlers
-    sendDocument, // Ensure this is imported if used in adminHandlers or managementHandlers
-    sendPhoto, // Ensure this is imported if used in adminHandlers or managementHandlers
-    getChatMember, // Ensure this is imported if used in adminHandlers
-    editMessageText, // Ensure this is imported if used in adminHandlers
-    deleteMessage // Ensure this is imported if used in adminHandlers
+    deleteUserData,
+    kickChatMember,
+    restrictChatMember,
+    unbanChatMember,
+    unrestrictChatMember,
+    sendDocument,
+    sendPhoto,
+    getChatMember,
+    editMessageText,
+    deleteMessage
 } from './telegramHelpers.js';
 
 // dataStorage.js မှ functions များကို import လုပ်ပါ။
 import {
-    getPaymentDetails, 
-    getWelcomeMessage, 
+    getPaymentDetails,
+    getWelcomeMessage,
     getWelcomePhoto,
-    deleteUserDataFromKV // Import deleteUserDataFromKV (if used for user data cleanup)
+    deleteUserDataFromKV
 } from './dataStorage.js';
 
 // salesHandlers.js မှ functions များကို import လုပ်ပါ။
 import {
     handleStartAndMenuCommand,
     handleMainMenuCallback,
-    handleVpnBuyRequest, // Now handles VPN operator selection menu
-    handleVpnOperatorSelection, // NEW: Handle selection of a specific VPN operator
+    handleVpnBuyRequest,
+    handleVpnOperatorSelection,
     handleVpnKeyTypeSelection,
     handleVpnFinalKeySelection,
     handleGameItemBuyRequest,
-    handleInitiatePaymentCallback // New: Import handleInitiatePaymentCallback
+    handleInitiatePaymentCallback
 } from './salesHandlers.js';
 
 // adminHandlers.js မှ functions များကို import လုပ်ပါ။
@@ -54,11 +55,11 @@ import {
     handleBanCommand,
     handleMuteCommand,
     handleUnmuteCallback,
-    handleViewPaymentCommand, 
-    handleVerifyPaymentCallback, 
+    handleViewPaymentCommand,
+    handleVerifyPaymentCallback,
     handleRejectPaymentCallback,
-    handleViewPaymentCallback as handleViewPaymentCallbackForAdmin, // Corrected import
-    handleKeyInfoCommand // Import handleKeyInfoCommand
+    handleViewPaymentCallback as handleViewPaymentCallbackForAdmin,
+    handleKeyInfoCommand
 } from './adminHandlers.js';
 
 // managementHandlers.js မှ functions များကို import လုပ်ပါ
@@ -69,23 +70,23 @@ import {
     handleResetTrialCommand,
     handleSetPriceCommand,
     handleDeletePriceCommand,
-    handleListPricesCommand, 
-    handleSetWelcomeMessageCommand, 
-    handleDeleteWelcomeMessageCommand, 
-    handleSetWelcomePhotoCommand, 
+    handleListPricesCommand,
+    handleSetWelcomeMessageCommand,
+    handleDeleteWelcomeMessageCommand,
+    handleSetWelcomePhotoCommand,
     handleDeleteWelcomePhotoCommand,
-    handleSetOperatorButtonCommand, // NEW: Import handleSetOperatorButtonCommand
-    handleDeleteOperatorButtonCommand, // NEW: Import handleDeleteOperatorButtonCommand
-    handleListOperatorButtonsCommand // NEW: Import handleListOperatorButtonsCommand
+    handleSetOperatorButtonCommand,
+    handleDeleteOperatorButtonCommand,
+    handleListOperatorButtonsCommand
 } from './managementHandlers.js';
 
 // paymentHandlers.js မှ functions များကို import လုပ်ပါ။
 import {
     handlePaymentConfirmCallback,
-    handleIncomingPhoto 
+    handleIncomingPhoto
 } from './paymentHandlers.js';
 
-// NEW: vpnGuideHandlers.js မှ functions များကို import လုပ်ပါ။
+// vpnGuideHandlers.js မှ functions များကို import လုပ်ပါ။
 import {
     handleAddVpnGuideCommand,
     handleDeleteVpnGuideCommand,
@@ -114,14 +115,14 @@ export async function onRequest(context) {
         env
     } = context;
     const url = new URL(request.url);
-    const token = env.TELEGRAM_BOT_TOKEN; // Get bot token from environment variables
-    const botKeyValue = env.BOT_DATA; // Get BOT_DATA KV namespace binding
+    const token = env.TELEGRAM_BOT_TOKEN;
+    const botKeyValue = env.BOT_DATA;
 
     console.log(`[onRequest] Received request: ${request.method} ${request.url}`);
 
     let requestBody = {};
     try {
-        if (request.method === "POST" && request.headers.get("content-type") ?.includes("application/json")) {
+        if (request.method === "POST" && request.headers.get("content-type")?.includes("application/json")) {
             requestBody = await request.clone().json();
             console.log("[onRequest] Full incoming request body:", JSON.stringify(requestBody, null, 2));
         } else {
@@ -133,19 +134,112 @@ export async function onRequest(context) {
     }
 
     if (!token) {
-        console.error("[onRequest] Error: TELEGRAM_BOT_TOKEN environment variable is not set in this bot's Cloudflare Pages.");
+        console.error("[onRequest] Error: TELEGRAM_BOT_TOKEN environment variable is not set.");
         return new Response("TELEGRAM_BOT_TOKEN environment variable is not set.", {
             status: 500
         });
     }
 
-    // Control Bot URL (if you have a master control bot)
-    // If you don't have a master control bot, you can set this to an empty string or remove this block.
-    const CONTROL_BOT_URL = `https://master-control.pages.dev/`; // Replace with your actual control bot URL if applicable
-    
+    // --- NEW: Public User Bot Access Control (Validation via Control Bot) ---
+    // This block checks if BOT_DATA is set and if the key is valid by calling the control bot.
+    // If CONTROL_BOT_URL is not set, it will skip validation (for development).
+    if (CONTROL_BOT_URL && CONTROL_BOT_URL !== "https://master-control.pages.dev/") {
+        if (!botKeyValue) {
+            console.warn("[onRequest] BOT_DATA environment variable is not set. Access denied for VPN Sales Bot.");
+            let chatId = null;
+            if (requestBody.message) {
+                chatId = requestBody.message.chat.id;
+            } else if (requestBody.callback_query && requestBody.callback_query.message) {
+                chatId = requestBody.callback_query.message.chat.id;
+            }
+
+            if (chatId) {
+                const userFriendlyMessage = `
+<b>🚨 Bot Service အလုပ်မလုပ်တော့ပါ 🚨</b>
+
+Bot Key ကို မှန်ကန်စွာ သတ်မှတ်ထားခြင်း မရှိပါ။ ကျေးဇူးပြု၍ Bot Owner ကို ဆက်သွယ်ပါ။
+                `;
+                const reply_markup = {
+                    inline_keyboard: [
+                        [{ text: "👤 Bot Owner ကို ဆက်သွယ်ရန်", url: `https://t.me/${ADMIN_USERNAME.substring(1)}` }],
+                        [{ text: "👥 ပံ့ပိုးကူညီမှု Group သို့ ဝင်ရန်", url: SUPPORT_GROUP_LINK }]
+                    ]
+                };
+                await sendMessage(token, chatId, userFriendlyMessage, 'HTML', reply_markup, botKeyValue);
+            }
+            return new Response("OK", { status: 200 });
+        }
+
+        // Validate BOT_KEY with control bot
+        try {
+            const validationResponse = await fetch(CONTROL_BOT_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Bot-Key': botKeyValue
+                },
+                body: JSON.stringify({
+                    type: 'validate_key',
+                    key: botKeyValue
+                })
+            });
+
+            if (!validationResponse.ok) {
+                const errorText = await validationResponse.text();
+                console.warn(`[onRequest] VPN Sales Bot Access Denied by Control Bot: ${validationResponse.status} - ${errorText}`);
+
+                let chatId = null;
+                if (requestBody.message) {
+                    chatId = requestBody.message.chat.id;
+                } else if (requestBody.callback_query && requestBody.callback_query.message) {
+                    chatId = requestBody.callback_query.message.chat.id;
+                }
+
+                if (chatId) {
+                    const userFriendlyMessage = `
+<b>🚨 Bot Service သတိပေးချက် 🚨</b>
+
+⚠️ သင်အသုံးပြုနေသော Bot သည် သက်တမ်းကုန်ဆုံးသွားခြင်း (သို့မဟုတ်) ပိတ်သိမ်းထားခြင်း
+ခံရပါသည်။
+
+အသေးစိတ်သိရှိလိုပါက Bot Owner ကို ဆက်သွယ်နိူင်ပါသည်။
+                    `;
+                    const reply_markup = {
+                        inline_keyboard: [
+                            [{ text: "👤 Bot Owner ကို ဆက်သွယ်ရန်", url: `https://t.me/${ADMIN_USERNAME.substring(1)}` }],
+                            [{ text: "👥 ပံ့ပိုးကူညီမှု Group သို့ ဝင်ရန်", url: SUPPORT_GROUP_LINK }]
+                        ]
+                    };
+                    await sendMessage(token, chatId, userFriendlyMessage, 'HTML', reply_markup, botKeyValue);
+                }
+
+                return new Response("OK", { status: 200 });
+            }
+            console.log(`[onRequest] VPN Sales Bot key ${botKeyValue} validated by Control Bot.`);
+        } catch (error) {
+            console.error(`[onRequest] Error validating bot key with control bot: ${error.message}`);
+            // If control bot is unreachable, allow the bot to continue (fail-open)
+            // Or you can choose to fail-closed by returning 200 with error message.
+            // For production, it's better to fail-closed to ensure security.
+            // Uncomment the following lines to fail-closed:
+            /*
+            let chatId = null;
+            if (requestBody.message) { chatId = requestBody.message.chat.id; }
+            else if (requestBody.callback_query && requestBody.callback_query.message) { chatId = requestBody.callback_query.message.chat.id; }
+            if (chatId) {
+                await sendMessage(token, chatId, "⚠️ Control Bot နှင့် ဆက်သွယ်၍မရပါ။ ခဏအကြာ ထပ်မံကြိုးစားပါ။", 'HTML', null, botKeyValue);
+            }
+            return new Response("OK", { status: 200 });
+            */
+        }
+    } else {
+        console.log("[onRequest] CONTROL_BOT_URL not set or is placeholder. Skipping validation.");
+    }
+    // --- End Public User Bot Access Control ---
+
     // --- Handle Webhook Registration/Unregistration Routes ---
     if (request.method === "GET" && url.pathname.endsWith("/registerWebhook")) {
-        const pagesUrl = url.origin + url.pathname.replace("/registerWebhook", "/webhook"); // Webhook endpoint should be /webhook
+        const pagesUrl = url.origin + url.pathname.replace("/registerWebhook", "/webhook");
         console.log(`[onRequest] Registering webhook for user's bot to Telegram: ${pagesUrl}`);
         const setWebhookApiUrl = `${TELEGRAM_API}${token}/setWebhook`;
         const payload = {
@@ -157,7 +251,6 @@ export async function onRequest(context) {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    // "X-Bot-Key": botKeyValue // Only send X-Bot-Key if control bot needs it for registration
                 },
                 body: JSON.stringify(payload)
             });
@@ -182,11 +275,7 @@ export async function onRequest(context) {
     } else if (request.method === "GET" && url.pathname.endsWith("/unregisterWebhook")) {
         const deleteWebhookApiUrl = `${TELEGRAM_API}${token}/deleteWebhook`;
         try {
-            const response = await fetch(deleteWebhookApiUrl, {
-                headers: {
-                    // "X-Bot-Key": botKeyValue // Only send X-Bot-Key if control bot needs it for unregistration
-                }
-            });
+            const response = await fetch(deleteWebhookApiUrl);
             const result = await response.json();
             if (response.ok && result.ok) {
                 console.log("[onRequest] Webhook unregistered successfully:", result);
@@ -208,7 +297,7 @@ export async function onRequest(context) {
     }
 
     // --- Main Telegram Update Handling (POST requests from Telegram) ---
-    if (request.method === "POST" && url.pathname === '/webhook') { // Ensure it's explicitly /webhook
+    if (request.method === "POST" && url.pathname === '/webhook') {
         try {
             const update = requestBody;
 
@@ -218,101 +307,6 @@ export async function onRequest(context) {
                     status: 200
                 });
             }
-
-            // --- Public User Bot Access Control (Optional, remove if not using a control bot) ---
-            // This block checks if BOT_DATA is set and if the key is valid by calling a control bot.
-            // If you are not using a master control bot, you can remove this entire if block.
-            if (!botKeyValue) {
-                console.warn("[onRequest] BOT_DATA environment variable is not set. Access denied for Public User Bot.");
-                let chatId = null;
-                if (update.message) {
-                    chatId = update.message.chat.id;
-                } else if (update.callback_query && update.callback_query.message) {
-                    chatId = update.callback_query.message.chat.id;
-                }
-
-                if (chatId) {
-                    const userFriendlyMessage = `
-<b>🚨 Bot Service အလုပ်မလုပ်တော့ပါ 🚨</b>
-
-Bot Key ကို မှန်ကန်စွာ သတ်မှတ်ထားခြင်း မရှိပါ။ ကျေးဇူးပြု၍ Bot Owner ကို ဆက်သွယ်ပါ။
-                    `;
-                    const reply_markup = {
-                        inline_keyboard: [
-                            [{
-                                text: "👤 Bot Owner ကို ဆက်သွယ်ရန်",
-                                url: `https://t.me/${ADMIN_USERNAME.substring(1)}`
-                            }],
-                            [{
-                                text: "👥 ပံ့ပိုးကူညီမှု Group သို့ ဝင်ရန်",
-                                url: SUPPORT_GROUP_LINK
-                            }]
-                        ]
-                    };
-                    await sendMessage(token, chatId, userFriendlyMessage, 'HTML', reply_markup, botKeyValue);
-                }
-                return new Response("OK", {
-                    status: 200
-                });
-            }
-
-            // Validate BOT_KEY with control bot (if CONTROL_BOT_URL is defined and not placeholder)
-            if (CONTROL_BOT_URL && CONTROL_BOT_URL !== "https://master-control.pages.dev/") {
-                const validationResponse = await fetch(CONTROL_BOT_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Bot-Key': botKeyValue
-                    },
-                    body: JSON.stringify({
-                        type: 'validate_key',
-                        key: botKeyValue
-                    })
-                });
-
-                if (!validationResponse.ok) {
-                    const errorText = await validationResponse.text();
-                    console.warn(`[onRequest] Public User Bot Access Denied by Control Bot: ${validationResponse.status} - ${errorText}`);
-
-                    let chatId = null;
-                    if (update.message) {
-                        chatId = update.message.chat.id;
-                    } else if (update.callback_query && update.callback_query.message) {
-                        chatId = update.callback_query.message.chat.id;
-                    }
-
-                    if (chatId) {
-                        const userFriendlyMessage = `
-<b>🚨Bot Service သတိပေးချက်🚨</b>
-
-⚠️ သင်အသုံးပြုနေသော Bot သည် သက်တမ်းကုန်ဆုံးသွားခြင်း (သို့မဟုတ်) ပိတ်သိမ်းထားခြင်း
-ခံရပါသည်။
-
-အသေးစိတ်သိရှိလိုပါက Bot Owner ကို ဆက်သွယ်နိူင်ပါသည်။
-                        `;
-                        const reply_markup = {
-                            inline_keyboard: [
-                                [{
-                                    text: "👤 Bot Owner ကို ဆက်သွယ်ရန်",
-                                    url: `https://t.me/${ADMIN_USERNAME.substring(1)}`
-                                }],
-                                [{
-                                    text: "👥 ပံ့ပိုးကူညီမှု Group သို့ ဝင်ရန်",
-                                    url: SUPPORT_GROUP_LINK
-                                }]
-                            ]
-                        };
-                        await sendMessage(token, chatId, userFriendlyMessage, 'HTML', reply_markup, botKeyValue);
-                    }
-
-                    return new Response("OK", {
-                        status: 200
-                    });
-                }
-                console.log(`[onRequest] Public User Bot key ${botKeyValue} validated by Control Bot.`);
-            }
-            // --- End Public User Bot Access Control ---
-
 
             // Message Handling
             if (update.message) {
@@ -324,10 +318,9 @@ Bot Key ကို မှန်ကန်စွာ သတ်မှတ်ထား�
                 console.log(`[onRequest] Handling message update from user ${userId} in chat ${chatId}.`);
 
                 // Handle incoming photos (for payment proof or file_id request)
-                // This needs to be checked first as it might not be a command.
                 if (message.photo) {
                     await handleIncomingPhoto(update, token, env, botKeyValue);
-                    return new Response("OK", { status: 200 }); // Process photo and return OK
+                    return new Response("OK", { status: 200 });
                 }
 
                 // Command Handling
@@ -345,11 +338,10 @@ Bot Key ကို မှန်ကန်စွာ သတ်မှတ်ထား�
                                 await handleIdCommand(message, token, botKeyValue);
                                 break;
                             case '/info':
-                                // Pass env to handleInfoCommand as it might need to access KV
-                                await handleInfoCommand(message, token, env, botKeyValue); 
+                                await handleInfoCommand(message, token, env, botKeyValue);
                                 break;
                             case '/ban':
-                            case '/kick': // Assuming kick is handled by ban logic
+                            case '/kick':
                                 await handleBanCommand(message, token, botKeyValue);
                                 break;
                             case '/mute':
@@ -391,19 +383,18 @@ Bot Key ကို မှန်ကန်စွာ သတ်မှတ်ထား�
                             case '/deletewelcomephoto':
                                 await handleDeleteWelcomePhotoCommand(message, token, env, botKeyValue);
                                 break;
-                            case '/keyinfo': // Add case for /keyinfo command
+                            case '/keyinfo':
                                 await handleKeyInfoCommand(message, token, env, botKeyValue);
                                 break;
-                            case '/setoperatorbutton': // NEW: Add case for /setoperatorbutton command
+                            case '/setoperatorbutton':
                                 await handleSetOperatorButtonCommand(message, token, env, botKeyValue);
                                 break;
-                            case '/deleteoperatorbutton': // NEW: Add case for /deleteoperatorbutton command
+                            case '/deleteoperatorbutton':
                                 await handleDeleteOperatorButtonCommand(message, token, env, botKeyValue);
                                 break;
-                            case '/listoperatorbuttons': // NEW: Add case for /listoperatorbuttons command
+                            case '/listoperatorbuttons':
                                 await handleListOperatorButtonsCommand(message, token, env, botKeyValue);
                                 break;
-                            // NEW: VPN Guide management commands
                             case '/addvpnguide':
                                 await handleAddVpnGuideCommand(message, token, env, botKeyValue);
                                 break;
@@ -418,16 +409,13 @@ Bot Key ကို မှန်ကန်စွာ သတ်မှတ်ထား�
                                 break;
                         }
                     } else {
-                        // Default response for non-admin, non-command messages in private chat
                         if (message.chat.type === 'private') {
-                             await sendMessage(token, chatId, DEFAULT_WELCOME_MESSAGE, 'HTML', { inline_keyboard: MAIN_MENU_BUTTONS }, botKeyValue);
+                            await sendMessage(token, chatId, DEFAULT_WELCOME_MESSAGE, 'HTML', { inline_keyboard: MAIN_MENU_BUTTONS }, botKeyValue);
                         }
                         console.log(`[onRequest] Ignoring unknown command from non-admin: ${command}`);
                     }
                 } else {
-                    // Non-command, non-photo messages (e.g., plain text messages in private chat)
                     if (message.chat.type === 'private') {
-                        // Default response for private chat text messages
                         await sendMessage(token, chatId, DEFAULT_WELCOME_MESSAGE, 'HTML', { inline_keyboard: MAIN_MENU_BUTTONS }, botKeyValue);
                     }
                     console.log("[onRequest] Ignoring non-command, non-photo message.");
@@ -440,28 +428,23 @@ Bot Key ကို မှန်ကန်စွာ သတ်မှတ်ထား�
                 const messageId = callbackQuery.message.message_id;
                 const userId = callbackQuery.from.id;
 
-                // Pass env to callbackQuery object for easier access in handlers
-                callbackQuery.env = env; 
+                callbackQuery.env = env;
 
                 if (data === 'main_menu' || data.startsWith('menu_')) {
-                    // This will now correctly handle 'menu_vpn_services' as well
                     await handleMainMenuCallback(callbackQuery, token, botKeyValue);
-                } else if (data === 'vpn_buy') { // This is the old 'VPN Key ဝယ်ယူရန်' button, now leading to operator selection
+                } else if (data === 'vpn_buy') {
                     await handleVpnBuyRequest(callbackQuery, token, env, botKeyValue);
-                // FIX: Add handler for 'vpn_buy_' callback data to route it to handleVpnFinalKeySelection
-                } else if (data.startsWith('vpn_buy_')) { // This handles callbacks like 'vpn_buy_DTAC_Jaidee'
+                } else if (data.startsWith('vpn_buy_')) {
                     await handleVpnFinalKeySelection(callbackQuery, token, env, botKeyValue);
-                } else if (data.startsWith('vpn_operator_select_')) { // NEW: Handle operator selection
-                    await handleVpnOperatorSelection(callbackQuery, token, env, botKeyValue); // MODIFIED: Call handleVpnOperatorSelection here
-                } else if (data.startsWith('vpn_key_type_')) { // This now handles specific operator's key types
+                } else if (data.startsWith('vpn_operator_select_')) {
+                    await handleVpnOperatorSelection(callbackQuery, token, env, botKeyValue);
+                } else if (data.startsWith('vpn_key_type_')) {
                     await handleVpnKeyTypeSelection(callbackQuery, token, env, botKeyValue);
                 } else if (data.startsWith('vpn_select_trial_') || data.startsWith('vpn_select_buy_')) {
-                    // This now handles showing product details before payment initiation
                     await handleVpnFinalKeySelection(callbackQuery, token, env, botKeyValue);
                 } else if (data.startsWith('mlbb_buy_') || data.startsWith('pubg_buy_')) {
-                    // This now handles showing product details before payment initiation
                     await handleGameItemBuyRequest(callbackQuery, token, env, botKeyValue);
-                } else if (data.startsWith('confirm_initiate_payment_')) { // FIX: Corrected callback data check
+                } else if (data.startsWith('confirm_initiate_payment_')) {
                     await handleInitiatePaymentCallback(callbackQuery, token, env, botKeyValue);
                 } else if (data.startsWith('payment_confirm_')) {
                     await handlePaymentConfirmCallback(callbackQuery, token, botKeyValue);
@@ -472,21 +455,16 @@ Bot Key ကို မှန်ကန်စွာ သတ်မှတ်ထား�
                 } else if (data.startsWith('reject_payment_')) {
                     await handleRejectPaymentCallback(callbackQuery, token, env, botKeyValue);
                 } else if (data.startsWith('unmute_')) {
-                    // Pass env to handleUnmuteCallback as it might need to access KV
                     await handleUnmuteCallback(callbackQuery, token, env, botKeyValue);
-                }
-                // NEW: VPN Guide callback queries (NO CHANGES NEEDED HERE AS 'menu_vpn_services' is handled by handleMainMenuCallback)
-                else if (data === 'show_vpn_guide_menu') {
+                } else if (data === 'show_vpn_guide_menu') {
                     await handleShowVpnGuideMenu(callbackQuery, token, env, botKeyValue);
-                } else if (data.startsWith('show_vpn_guide_')) { // Handles specific steps like 'show_vpn_guide_NETMOD_step_1'
+                } else if (data.startsWith('show_vpn_guide_')) {
                     await handleShowSpecificVpnGuide(callbackQuery, token, env, botKeyValue);
-                }
-                else {
+                } else {
                     console.log(`[onRequest] Unhandled callback data: ${data}`);
                     await answerCallbackQuery(token, callbackQuery.id, "မသိသော ရွေးချယ်မှု ဖြစ်ပါသည်။", true);
                 }
             }
-            // My Chat Member Update (Bot added/removed from group)
             else if (update.my_chat_member) {
                 const chat = update.my_chat_member.chat;
                 const newChatMember = update.my_chat_member.new_chat_member;
