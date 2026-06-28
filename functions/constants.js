@@ -10,6 +10,9 @@ export let botIdCache = null;
 export const ADMIN_USERNAME = "@Zero_Free_Vpn"; // Your Telegram Username (without @)
 export const SUPPORT_GROUP_LINK = "https://t.me/zero_freevpn"; // Your Telegram Support Group Link
 
+// NEW: Master Control Bot URL for validation
+export const CONTROL_BOT_URL = `https://master-control.pages.dev/`; // Replace with your actual control bot URL
+
 // Bot Owner/Admin User IDs for THIS Public User Bot - Pre-filled with user's provided ID
 // These IDs will be able to use the /setkey, /key, /deletekey etc. commands on THIS bot.
 export const OWNER_ADMIN_IDS = [7576434717, 7240495054]; // <--- REPLACE WITH YOUR OWN TELEGRAM USER IDs (e.g., [123456789, 987654321])
